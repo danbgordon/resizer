@@ -16,7 +16,7 @@ This toolkit creates small macOS apps that resize your Google Chrome window to e
    chmod +x build-apps.sh
    ./build-apps.sh
    ```
-4. A folder called **"Chrome Resizer Apps"** will appear on your Desktop
+4. A folder called **"Chrome Resizer Apps"** will appear in your user Applications folder (`~/Applications`)
 5. Drag whichever app(s) you want into your **Dock**
 
 That's it. Click the app in your Dock, Chrome resizes.
@@ -25,12 +25,21 @@ That's it. Click the app in your Dock, Chrome resizes.
 
 | App | Behavior |
 |-----|----------|
-| **Chrome 1280×1024.app** | One click → Chrome resizes to 1280×1024 |
-| **Chrome 1920×1080.app** | One click → Chrome resizes to 1920×1080 |
-| **Chrome Resizer.app** | Presents a dropdown to pick a size |
+| **Chrome 1280×1024.app** | One click → Chrome window resizes to 1280×1024 |
+| **Chrome 1920×1080.app** | One click → Chrome window resizes to 1920×1080 |
+| **Chrome Viewport 1280×1024.app** | One click → Chrome viewport (content area) resizes to 1280×1024 |
+| **Chrome Viewport 1920×1080.app** | One click → Chrome viewport (content area) resizes to 1920×1080 |
+| **Chrome Resizer.app** | Presents a dropdown to pick a size and mode (window or viewport) |
 | **Chrome Resizer (Repeat).app** | Same dropdown, but stays open so you can resize multiple times |
 
-**Recommended for most people:** Drag the individual size apps (1280×1024 and 1920×1080) to your Dock. One click, done.
+**Recommended for most people:** Drag the individual size apps to your Dock. One click, done.
+
+## Window vs Viewport Mode
+
+- **Window mode** sets the entire Chrome window (including tabs, address bar, bookmarks bar) to the target dimensions. This is what you want when recording the full browser window.
+- **Viewport mode** sets the web content area inside Chrome to the target dimensions. The actual window will be slightly larger to account for Chrome's UI. This is what you want when you need the page content itself at an exact resolution (e.g., for responsive design testing).
+
+> **Setup required for viewport mode:** In Chrome, go to **View → Developer → Allow JavaScript from Apple Events** and enable it. This is a one-time setting. Viewport mode also requires a regular web page in the active tab — it won't work on `chrome://` internal pages (like the new tab page). In either case, the app falls back to window mode with a helpful error message.
 
 ## First-Time Permission
 
@@ -53,7 +62,7 @@ Click **OK**. This is macOS's standard automation permission — it only asks on
 1. Run `build-apps.sh` on your own Mac
 2. Zip the "Chrome Resizer Apps" folder:
    ```
-   cd ~/Desktop
+   cd ~/Applications
    zip -r "Chrome Resizer Apps.zip" "Chrome Resizer Apps"
    ```
 3. Share the .zip via your internal file sharing

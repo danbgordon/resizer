@@ -8,10 +8,12 @@ Target audience: Fleet (fleetdm.com) team members who need to record their scree
 
 ## What Exists
 
-- **`build-apps.sh`** — Shell script that uses `osacompile` to generate .app bundles on macOS. Builds four apps:
-  - `Chrome 1280×1024.app` — one-click resize
-  - `Chrome 1920×1080.app` — one-click resize
-  - `Chrome Resizer.app` — dropdown picker
+- **`build-apps.sh`** — Shell script that uses `osacompile` to generate .app bundles on macOS. Builds six apps:
+  - `Chrome 1280×1024.app` — one-click window resize
+  - `Chrome 1920×1080.app` — one-click window resize
+  - `Chrome Viewport 1280×1024.app` — one-click viewport resize
+  - `Chrome Viewport 1920×1080.app` — one-click viewport resize
+  - `Chrome Resizer.app` — dropdown picker (window and viewport modes)
   - `Chrome Resizer (Repeat).app` — persistent picker that stays open
 - **`README.md`** — Setup guide covering individual setup, company distribution (share script, pre-build .apps, or MDM deployment), adding new sizes, troubleshooting, and PPPC profile guidance for MDM.
 
@@ -19,7 +21,8 @@ Target audience: Fleet (fleetdm.com) team members who need to record their scree
 
 - Apps are compiled AppleScript (`.app` bundles via `osacompile`)
 - Window bounds use `{x, y, x+width, y+height}` format; y-offset of 25 accounts for macOS menu bar
-- Stated dimensions are the full Chrome window frame (tabs, address bar included), not the viewport
+- Window mode: stated dimensions are the full Chrome window frame (tabs, address bar included), not the viewport
+- Viewport mode: uses a two-pass technique — sets initial bounds, measures viewport via `execute javascript`, then adjusts to compensate for Chrome's UI chrome
 - First run triggers a macOS Automation permission prompt ("wants to control Google Chrome") — can be pre-approved via PPPC configuration profile in MDM
 - Gatekeeper may block pre-built .apps from unidentified developers — right-click → Open bypasses this once
 
