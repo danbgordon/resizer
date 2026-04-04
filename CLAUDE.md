@@ -1,36 +1,34 @@
-# Chrome Window Resizer
+# Window Resizer
 
 ## Project Summary
 
-A set of native macOS AppleScript apps that resize Google Chrome windows to exact pixel dimensions. Built as a safe, zero-dependency alternative to Chrome extensions (which have a history of malware issues — e.g., the original Window Resizer extension).
+A native macOS AppleScript app that resizes any application's window to exact pixel dimensions. Works with any app, and offers viewport-accurate sizing for supported browsers (Chrome, Safari, Edge, Arc, Brave, Chromium). Sizes are loaded from a user-editable config file.
+
+Built as a safe, zero-dependency alternative to Chrome extensions (which have a history of malware issues — e.g., the original Window Resizer extension).
 
 Target audience: Fleet (fleetdm.com) team members who need to record their screen at specific dimensions.
 
 ## What Exists
 
-- **`build-apps.sh`** — Shell script that uses `osacompile` to generate .app bundles on macOS. Builds six apps:
-  - `Chrome 1280×1024.app` — one-click window resize
-  - `Chrome 1920×1080.app` — one-click window resize
-  - `Chrome Viewport 1280×1024.app` — one-click viewport resize
-  - `Chrome Viewport 1920×1080.app` — one-click viewport resize
-  - `Chrome Resizer.app` — dropdown picker (window and viewport modes)
-  - `Chrome Resizer (Repeat).app` — persistent picker that stays open
-- **`README.md`** — Setup guide covering individual setup, company distribution (share script, pre-build .apps, or MDM deployment), adding new sizes, troubleshooting, and PPPC profile guidance for MDM.
+- **`build-apps.sh`** — Shell script that uses `osacompile` to generate a single `Window Resizer.app` in `~/Applications`. Also creates a default config file at `~/.config/window-resizer/sizes.conf` if one doesn't exist.
+- **`README.md`** — Setup guide covering usage, custom sizes, deployment options, and troubleshooting.
 
 ## Key Technical Details
 
-- Apps are compiled AppleScript (`.app` bundles via `osacompile`)
+- Single compiled AppleScript app (`.app` bundle via `osacompile`, ad-hoc codesigned)
+- Auto-detects the previously-active app using `lsappinfo visibleProcessList` (skips Finder, Dock, Spotlight, Launchpad)
+- Sizes loaded from `~/.config/window-resizer/sizes.conf` (CSV format: `width,height`), falls back to built-in defaults
+- Window resize uses `tell application X to set bounds of front window` (triggers per-app Automation permission)
+- Viewport resize (browsers only): two-pass technique — set initial bounds, measure viewport via JavaScript, adjust to compensate for browser UI chrome
+  - Chromium browsers: `using terms from application "Google Chrome"` + `execute javascript`
+  - Safari: `do JavaScript` in front document
 - Window bounds use `{x, y, x+width, y+height}` format; y-offset of 25 accounts for macOS menu bar
-- Window mode: stated dimensions are the full Chrome window frame (tabs, address bar included), not the viewport
-- Viewport mode: uses a two-pass technique — sets initial bounds, measures viewport via `execute javascript`, then adjusts to compensate for Chrome's UI chrome
-- First run triggers a macOS Automation permission prompt ("wants to control Google Chrome") — can be pre-approved via PPPC configuration profile in MDM
-- Gatekeeper may block pre-built .apps from unidentified developers — right-click → Open bypasses this once
+- Apps must be built to `~/Applications` (not Desktop) — macOS blocks `osacompile` apps from running on Desktop
+- Chrome viewport mode requires: View → Developer → Allow JavaScript from Apple Events
 
 ## Potential Next Steps
 
-- Add more preset sizes
-- Custom icon for the .app files (currently uses the default Script Editor icon)
+- Custom icon for the .app file (currently uses the default Script Editor icon)
 - Package as a `.pkg` installer for MDM deployment
 - Create a PPPC profile (`.mobileconfig`) for Fleet/MDM to pre-approve the Automation permission
-- Support for other browsers (Brave, Arc, Edge, etc.)
-- Consider a single menu-bar app using a status item instead of separate .app files
+- Keyboard shortcut integration (e.g., via Automator or Shortcuts)

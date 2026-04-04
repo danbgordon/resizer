@@ -1,10 +1,12 @@
-# Chrome Window Resizer — Setup Guide
+# Window Resizer — Setup Guide
 
 ## What This Does
 
-This toolkit creates small macOS apps that resize your Google Chrome window to exact pixel dimensions with a single click. No Chrome extensions, no third-party dependencies, no security concerns — just native macOS AppleScript.
+A single macOS app that resizes any application's window to exact pixel dimensions. Works with any app — and when a browser (Chrome, Safari, Edge, Arc, Brave) is the target, it also offers viewport-accurate sizing. No extensions, no dependencies — just native macOS AppleScript.
 
-## Quick Start (Individual Setup)
+Sizes are loaded from a simple config file that you can edit to add your own presets.
+
+## Quick Start
 
 1. Open **Terminal** (Applications → Utilities → Terminal)
 2. Navigate to wherever you saved these files:
@@ -16,124 +18,106 @@ This toolkit creates small macOS apps that resize your Google Chrome window to e
    chmod +x build-apps.sh
    ./build-apps.sh
    ```
-4. A folder called **"Chrome Resizer Apps"** will appear in your user Applications folder (`~/Applications`)
-5. Drag whichever app(s) you want into your **Dock**
+4. **Window Resizer.app** will appear in `~/Applications`
+5. Drag it to your **Dock**
 
-That's it. Click the app in your Dock, Chrome resizes.
+## How to Use
 
-## What Gets Built
+1. Click on the window you want to resize (making it the active app)
+2. Click **Window Resizer** in your Dock
+3. The app auto-detects what you were just using and shows: **"Resize: Google Chrome"**
+4. Pick a size from the list
+5. Done — the window resizes and the app exits
 
-| App | Behavior |
-|-----|----------|
-| **Chrome 1280×1024.app** | One click → Chrome window resizes to 1280×1024 |
-| **Chrome 1920×1080.app** | One click → Chrome window resizes to 1920×1080 |
-| **Chrome Viewport 1280×1024.app** | One click → Chrome viewport (content area) resizes to 1280×1024 |
-| **Chrome Viewport 1920×1080.app** | One click → Chrome viewport (content area) resizes to 1920×1080 |
-| **Chrome Resizer.app** | Presents a dropdown to pick a size and mode (window or viewport) |
-| **Chrome Resizer (Repeat).app** | Same dropdown, but stays open so you can resize multiple times |
+If the target is a browser, viewport options are also shown (e.g., "1280 × 1024 (viewport)").
 
-**Recommended for most people:** Drag the individual size apps to your Dock. One click, done.
+## Custom Sizes
+
+Sizes are stored in `~/.config/window-resizer/sizes.conf`. The build script creates a default config with two sizes (1280×1024 and 1920×1080). Edit this file to add your own:
+
+```
+# Window Resizer — custom sizes
+# Format: width,height (one per line)
+# Lines starting with # are ignored, blank lines are skipped
+1280,1024
+1920,1080
+1440,900
+3840,2160
+```
+
+Changes take effect the next time you launch the app — no rebuild needed.
 
 ## Window vs Viewport Mode
 
-- **Window mode** sets the entire Chrome window (including tabs, address bar, bookmarks bar) to the target dimensions. This is what you want when recording the full browser window.
-- **Viewport mode** sets the web content area inside Chrome to the target dimensions. The actual window will be slightly larger to account for Chrome's UI. This is what you want when you need the page content itself at an exact resolution (e.g., for responsive design testing).
+- **Window mode** sets the full window frame (including title bar, tabs, address bar) to the target dimensions. Available for any app.
+- **Viewport mode** sets the web content area to the exact target dimensions, automatically compensating for the browser's UI chrome. Only available when a supported browser is the target.
 
-> **Setup required for viewport mode:** In Chrome, go to **View → Developer → Allow JavaScript from Apple Events** and enable it. This is a one-time setting. Viewport mode also requires a regular web page in the active tab — it won't work on `chrome://` internal pages (like the new tab page). In either case, the app falls back to window mode with a helpful error message.
+Supported browsers for viewport mode: Google Chrome, Chrome Canary, Chromium, Brave, Microsoft Edge, Arc, Safari.
+
+> **Chrome viewport setup:** Go to **View → Developer → Allow JavaScript from Apple Events** (one-time setting). Viewport mode also requires a regular web page in the active tab — not a `chrome://` internal page. If JavaScript access isn't available, the app falls back to window mode with a helpful message.
 
 ## First-Time Permission
 
-The first time you run one of these apps, macOS will ask:
+The first time you resize a particular app, macOS will ask:
 
-> "Chrome [app name]" wants to control "Google Chrome." Allow?
+> "Window Resizer" wants to control "[App Name]." Allow?
 
-Click **OK**. This is macOS's standard automation permission — it only asks once. If it gets blocked, go to **System Settings → Privacy & Security → Automation** and enable it there.
+Click **OK**. This is macOS's standard Automation permission — it only asks once per target app. If it gets blocked, go to **System Settings → Privacy & Security → Automation** and enable it.
 
 ## Company-Wide Deployment
 
 ### Option A: Share the Build Script (Simplest)
 
-1. Distribute the `build-apps.sh` file (via Slack, email, shared drive, etc.)
-2. Have each person run the two terminal commands above
-3. Done — apps are built locally on their machine
+1. Distribute `build-apps.sh` (via Slack, email, shared drive, etc.)
+2. Each person runs the terminal commands above
+3. Done — the app and default config are created locally
 
-### Option B: Pre-Build and Distribute the .app Files
+### Option B: Pre-Build and Distribute
 
 1. Run `build-apps.sh` on your own Mac
-2. Zip the "Chrome Resizer Apps" folder:
+2. Zip the app:
    ```
    cd ~/Applications
-   zip -r "Chrome Resizer Apps.zip" "Chrome Resizer Apps"
+   zip -r "Window Resizer.zip" "Window Resizer.app"
    ```
 3. Share the .zip via your internal file sharing
-4. Each person unzips and drags to their Dock
+4. Each person unzips, moves to `~/Applications`, and drags to Dock
 
-> **Note:** Pre-built .app files may trigger Gatekeeper warnings ("app is from an unidentified developer"). Each person will need to right-click → Open the first time, then click "Open" in the dialog. After that it works normally.
+> **Note:** Pre-built .app files may trigger Gatekeeper warnings. Right-click → Open the first time to bypass.
 
 ### Option C: MDM Deployment (Fleet, Jamf, etc.)
 
-If you want to push these out silently:
-
-1. Pre-build the apps as above
-2. Package them into a `.pkg` installer targeting `/Applications/Utilities/Chrome Resizers/`
-3. Deploy via your MDM tool
-4. You'll also need to pre-approve the Automation (Accessibility) permission via a PPPC profile:
-   - **App:** `/Applications/Utilities/Chrome Resizers/Chrome 1280×1024.app`
-   - **Receiver:** `com.google.Chrome`
-   - **Permission:** `AppleEvents` → `Allow`
-   - Repeat for each .app
-
-This avoids the "wants to control Google Chrome" prompt entirely.
-
-## Adding New Sizes
-
-To add a new size, edit `build-apps.sh`:
-
-1. Copy one of the individual app blocks (e.g., the 1280×1024 section)
-2. Change the dimensions and filename
-3. Add the new size to the chooser app's `sizeOptions` list and `if/else` block
-4. Re-run the script
-
-Example — adding 1440×900:
-
-```bash
-cat > /tmp/chrome_1440x900.applescript << 'APPLESCRIPT'
-on run
-    tell application "Google Chrome"
-        activate
-        delay 0.3
-        set targetWidth to 1440
-        set targetHeight to 900
-        set bounds of front window to {0, 25, targetWidth, targetHeight + 25}
-    end tell
-    display notification "Chrome resized to 1440 × 900" with title "Chrome Resizer"
-end run
-APPLESCRIPT
-
-osacompile -o "$OUTPUT_DIR/Chrome 1440×900.app" /tmp/chrome_1440x900.applescript
-```
+1. Pre-build the app
+2. Package into a `.pkg` installer targeting `/Applications/`
+3. Deploy via MDM
+4. Pre-approve the Automation permission via a PPPC profile for each target app (e.g., `com.google.Chrome`)
 
 ## How It Works
 
-Each `.app` is a compiled AppleScript that:
+**Window Resizer.app** is a compiled AppleScript that:
 
-1. Activates Google Chrome (brings it to the front)
-2. Sets the `bounds` of the front window to `{x, y, x+width, y+height}`
-3. The `y` offset of `25` accounts for the macOS menu bar
-4. Shows a confirmation notification
+1. Detects the previously-active app using `lsappinfo` (skips Finder, Dock, and other launchers)
+2. Reads sizes from `~/.config/window-resizer/sizes.conf` (falls back to built-in defaults if missing)
+3. If the target is a browser, adds viewport options to the list
+4. Presents a `choose from list` dialog
+5. Resizes the target app's front window using `set bounds`
+6. For viewport mode: measures the actual viewport via JavaScript, calculates the UI chrome overhead, and adjusts the window to compensate
 
-The window dimensions include Chrome's full window frame — tabs, address bar, and all. This means the **viewport** (the web content area) will be slightly smaller than the stated dimensions, which is typically what you want when recording the full browser window.
+The `y` offset of `25` in the bounds accounts for the macOS menu bar. Dimensions are the full window frame — the viewport (web content area) will be slightly smaller in window mode.
 
 ## Troubleshooting
 
 **"App is damaged and can't be opened"**
 → Right-click the app → Open → click "Open" in the dialog. This is Gatekeeper; it only happens once.
 
-**"Chrome Resizer wants to control Google Chrome" keeps appearing**
-→ Go to System Settings → Privacy & Security → Automation → make sure the app is allowed to control Chrome.
+**"Window Resizer wants to control [app]" keeps appearing**
+→ Go to System Settings → Privacy & Security → Automation → enable Window Resizer for that app.
+
+**Wrong app detected**
+→ Make sure you click on the target window before launching Window Resizer. If you launched from Finder, the app skips Finder and detects the next most recent app.
 
 **Window doesn't fit on my screen**
-→ 1920×1080 requires at least a 1920px-wide display. On a smaller screen (like a 13" MacBook), the window will be clipped. Consider adding a smaller preset.
+→ 1920×1080 requires at least a 1920px-wide display. On a smaller screen, the window will be clipped. Add a smaller preset to your config file.
 
-**I use Chrome Canary / Chromium / Brave**
-→ Change `"Google Chrome"` in the AppleScript to `"Google Chrome Canary"`, `"Chromium"`, or `"Brave Browser"`.
+**Viewport mode isn't offered**
+→ Viewport mode only appears when the target app is a supported browser (Chrome, Safari, Edge, Arc, Brave, Chromium).
