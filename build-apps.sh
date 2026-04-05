@@ -310,7 +310,11 @@ end resizeViewport
 on getPreviousApp()
     -- Get the app that was frontmost before us, using lsappinfo's activation order.
     -- Skips Finder and other launcher apps since the user may have launched us from there.
-    set shellScript to "skip='Finder|Dock|Spotlight|Launchpad|Window Resizer'; first=true; for asn in $(lsappinfo visibleProcessList | grep -oE 'ASN:[^ ]+' | sed 's/\"[^\"]*\"//; s/-:$//'); do if $first; then first=false; continue; fi; name=$(lsappinfo info -only name \"$asn\" 2>/dev/null | awk -F'=\"' '{print $2}' | sed 's/\"$//'); if [ -n \"$name\" ] && ! echo \"$name\" | grep -qE \"^($skip)$\"; then echo \"$name\"; exit 0; fi; done"
+    set currentApp to name of current application
+    set skipList to "Finder|Dock|Spotlight|Launchpad|Window Resizer|" & currentApp
+
+    set shellScript to "lsappinfo visibleProcessList | grep -oE '\"[^\"]+\"' | tr -d '\"' | tr '_' ' ' | grep -vE \"^(" & skipList & ")$\" | head -n 1"
+
     try
         set targetName to do shell script shellScript
     on error
