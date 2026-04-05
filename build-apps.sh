@@ -137,26 +137,127 @@ on parseSelection(chosenSize)
     return {targetWidth:w, targetHeight:h, isViewport:isViewport}
 end parseSelection
 
-on resizeWindow(appName, targetWidth, targetHeight)
+on getScreenFrames()
+    -- Get screen frames once at launch (avoids repeated Swift cold-starts).
+    -- Returns pipe-delimited string: "x,y,w,h|x,y,w,h|..."
+    return do shell script "swift -e '
+import AppKit
+let mainHeight = NSScreen.screens[0].frame.height
+var lines: [String] = []
+for screen in NSScreen.screens {
+    let f = screen.frame
+    let topY = mainHeight - f.origin.y - f.height
+    lines.append(\"\\(Int(f.origin.x)),\\(Int(topY)),\\(Int(f.width)),\\(Int(f.height))\")
+}
+print(lines.joined(separator: \"|\"))
+'"
+end getScreenFrames
+
+on clampToScreen(winX, winY, newWidth, newHeight, screenData)
+    -- Find which screen the window is on and adjust position to stay on it.
+    set AppleScript's text item delimiters to "|"
+    set screenLines to text items of screenData
+    set AppleScript's text item delimiters to ""
+
+    -- Find which screen contains the window's top-left corner
+    set bestX to 0
+    set bestY to 0
+    set bestW to 9999
+    set bestH to 9999
+    repeat with aLine in screenLines
+        set AppleScript's text item delimiters to ","
+        set parts to text items of aLine
+        set AppleScript's text item delimiters to ""
+        set sX to (item 1 of parts) as integer
+        set sY to (item 2 of parts) as integer
+        set sW to (item 3 of parts) as integer
+        set sH to (item 4 of parts) as integer
+        if winX ≥ sX and winX < (sX + sW) and winY ≥ sY and winY < (sY + sH) then
+            set bestX to sX
+            set bestY to sY
+            set bestW to sW
+            set bestH to sH
+            exit repeat
+        end if
+    end repeat
+
+    set newX to winX
+    set newY to winY
+    if (newX + newWidth) > (bestX + bestW) then
+        set newX to (bestX + bestW) - newWidth
+    end if
+    if (newY + newHeight) > (bestY + bestH) then
+        set newY to (bestY + bestH) - newHeight
+    end if
+    if newX < bestX then set newX to bestX
+    if newY < bestY then set newY to bestY
+
+    return {newX, newY}
+end clampToScreen
+
+on resizeWindow(appName, targetWidth, targetHeight, screenFrames)
     try
+        -- Try direct app scripting first (works for most apps)
         tell application appName
             activate
-            delay 0.3
-            set bounds of front window to {0, 25, targetWidth, targetHeight + 25}
+            set {x1, y1, x2, y2} to bounds of front window
         end tell
-    on error errMsg
-        display dialog "Could not resize " & appName & ":" & return & return & errMsg buttons {"OK"} default button "OK"
+        set {newX, newY} to my clampToScreen(x1, y1, targetWidth, targetHeight, screenFrames)
+        tell application appName
+            set bounds of front window to {newX, newY, newX + targetWidth, newY + targetHeight}
+        end tell
+    on error
+        -- Fallback: use System Events (for Electron apps, etc.)
+        -- First check if we have Accessibility permission; prompt if not
+        -- Check Accessibility without prompting first
+        set axCheckPath to POSIX path of (path to me) & "Contents/Resources/ax_check"
+        set axPromptPath to POSIX path of (path to me) & "Contents/Resources/ax_prompt"
+        set axTrusted to do shell script quoted form of axCheckPath
+        if axTrusted is "false" then
+            tell me to activate
+            display dialog "Window Resizer needs Accessibility access to resize " & appName & "." & return & return & "Click OK to open System Settings and grant access. Window Resizer will automatically resize " & appName & " once permission is granted." buttons {"OK"} default button "OK"
+            do shell script quoted form of axPromptPath
+            -- Poll until permission is granted (uses bundled binary, no Automation prompts)
+            repeat
+                delay 1
+                set axCheck to do shell script quoted form of axCheckPath
+                if axCheck is "true" then exit repeat
+            end repeat
+            -- Permission granted — activate the target app and fall through to resize
+            tell application appName to activate
+            delay 0.2
+        end if
+        try
+            tell application appName to activate
+            tell application "System Events"
+                tell application process appName
+                    set {x1, y1} to position of window 1
+                end tell
+            end tell
+            set {newX, newY} to my clampToScreen(x1, y1, targetWidth, targetHeight, screenFrames)
+            tell application "System Events"
+                tell application process appName
+                    set position of window 1 to {newX, newY}
+                    set size of window 1 to {targetWidth, targetHeight}
+                end tell
+            end tell
+        on error errMsg
+            display dialog "Could not resize " & appName & ":" & return & return & errMsg buttons {"OK"} default button "OK"
+        end try
     end try
 end resizeWindow
 
-on resizeViewport(appName, targetWidth, targetHeight)
-    -- First pass: set window to target size
+on resizeViewport(appName, targetWidth, targetHeight, screenFrames)
+    -- First pass: set window to target size on the same screen
     tell application appName
         activate
-        delay 0.3
-        set bounds of front window to {0, 25, targetWidth, targetHeight + 25}
+        set {x1, y1, x2, y2} to bounds of front window
     end tell
-    delay 0.3
+    set {newX, newY} to my clampToScreen(x1, y1, targetWidth, targetHeight, screenFrames)
+    tell application appName
+        set bounds of front window to {newX, newY, newX + targetWidth, newY + targetHeight}
+    end tell
+    delay 0.1
 
     -- Measure viewport via JavaScript (browser-specific)
     set jsCode to "window.innerWidth + ',' + window.innerHeight"
@@ -192,9 +293,15 @@ on resizeViewport(appName, targetWidth, targetHeight)
     set deltaW to targetWidth - actualVW
     set deltaH to targetHeight - actualVH
 
-    -- Second pass: adjust bounds to compensate
+    -- Second pass: adjust bounds to compensate, staying on same screen
+    set adjW to targetWidth + deltaW
+    set adjH to targetHeight + deltaH
     tell application appName
-        set bounds of front window to {0, 25, targetWidth + deltaW, targetHeight + deltaH + 25}
+        set {x1, y1, x2, y2} to bounds of front window
+    end tell
+    set {newX, newY} to my clampToScreen(x1, y1, adjW, adjH, screenFrames)
+    tell application appName
+        set bounds of front window to {newX, newY, newX + adjW, newY + adjH}
     end tell
 
     display notification (appName & " viewport set to " & targetWidth & " × " & targetHeight) with title "Window Resizer"
@@ -214,6 +321,7 @@ end getPreviousApp
 
 on run
     set sizes to my loadSizes()
+    set screenFrames to my getScreenFrames()
 
     -- Auto-detect the app that was active before us
     set targetApp to my getPreviousApp()
@@ -240,19 +348,41 @@ on run
     set h to targetHeight of sizeInfo
 
     if isViewport of sizeInfo then
-        my resizeViewport(targetApp, w, h)
+        my resizeViewport(targetApp, w, h, screenFrames)
     else
-        my resizeWindow(targetApp, w, h)
+        my resizeWindow(targetApp, w, h, screenFrames)
         display notification (targetApp & " resized to " & w & " × " & h) with title "Window Resizer"
     end if
 end run
 APPLESCRIPT
 
 # ----------------------------------------------------------
+# Build AX check helper (instant binary, no swift cold-start)
+# ----------------------------------------------------------
+cat > /tmp/ax_check.swift << 'SWIFT'
+import Cocoa
+print(AXIsProcessTrusted())
+SWIFT
+swiftc /tmp/ax_check.swift -o /tmp/ax_check 2>/dev/null
+
+cat > /tmp/ax_prompt.swift << 'SWIFT'
+import Cocoa
+let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+_ = AXIsProcessTrustedWithOptions(opts)
+SWIFT
+swiftc /tmp/ax_prompt.swift -o /tmp/ax_prompt 2>/dev/null
+
+# ----------------------------------------------------------
 # Compile and sign
 # ----------------------------------------------------------
 rm -rf "$APP_DIR/$APP_NAME.app"
 osacompile -o "$APP_DIR/$APP_NAME.app" /tmp/window_resizer.applescript
+
+# Bundle the helper binaries inside the app
+cp /tmp/ax_check "$APP_DIR/$APP_NAME.app/Contents/Resources/ax_check"
+cp /tmp/ax_prompt "$APP_DIR/$APP_NAME.app/Contents/Resources/ax_prompt"
+chmod +x "$APP_DIR/$APP_NAME.app/Contents/Resources/ax_check"
+chmod +x "$APP_DIR/$APP_NAME.app/Contents/Resources/ax_prompt"
 
 # Set a proper bundle identifier so macOS can track permissions correctly
 /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string com.fleetdm.window-resizer" "$APP_DIR/$APP_NAME.app/Contents/Info.plist"
@@ -261,9 +391,9 @@ codesign --force --sign - "$APP_DIR/$APP_NAME.app"
 echo "  ✓ $APP_NAME.app"
 
 # ----------------------------------------------------------
-# Clean up temp file
+# Clean up temp files
 # ----------------------------------------------------------
-rm -f /tmp/window_resizer.applescript
+rm -f /tmp/window_resizer.applescript /tmp/ax_check /tmp/ax_check.swift /tmp/ax_prompt /tmp/ax_prompt.swift
 
 echo ""
 echo "============================================================"
