@@ -1,4 +1,4 @@
-# Window Resizer — Setup Guide
+# Resizer — Setup Guide
 
 ## What This Does
 
@@ -11,20 +11,20 @@ Sizes are loaded from a simple config file that you can edit to add your own pre
 1. Open **Terminal** (Applications → Utilities → Terminal)
 2. Navigate to wherever you saved these files:
    ```
-   cd ~/Downloads/chrome-resizer
+   cd ~/Downloads/resizer
    ```
 3. Make the script executable and run it:
    ```
    chmod +x build-apps.sh
    ./build-apps.sh
    ```
-4. **Window Resizer.app** will appear in `~/Applications`
+4. **Resizer.app** will appear in `~/Applications`
 5. Drag it to your **Dock**
 
 ## How to Use
 
 1. Click on the window you want to resize (making it the active app)
-2. Click **Window Resizer** in your Dock
+2. Click **Resizer** in your Dock
 3. The app auto-detects what you were just using and shows: **"Resize: Google Chrome"**
 4. Pick a size from the list
 5. Done — the window resizes and the app exits
@@ -33,10 +33,10 @@ If the target is a browser, viewport options are also shown (e.g., "1280 × 1024
 
 ## Custom Sizes
 
-Sizes are stored in `~/.config/window-resizer/sizes.conf`. The build script creates a default config with two sizes (1280×1024 and 1920×1080). Edit this file to add your own:
+Sizes are stored in `~/.config/resizer/sizes.conf`. The build script creates a default config with two sizes (1280×1024 and 1920×1080). Edit this file to add your own:
 
 ```
-# Window Resizer — custom sizes
+# Resizer — custom sizes
 # Format: width,height (one per line)
 # Lines starting with # are ignored, blank lines are skipped
 1280,1024
@@ -60,7 +60,7 @@ Supported browsers for viewport mode: Google Chrome, Chrome Canary, Chromium, Br
 
 The first time you resize a particular app, macOS will ask:
 
-> "Window Resizer" wants to control "[App Name]." Allow?
+> "Resizer" wants to control "[App Name]." Allow?
 
 Click **OK**. This is macOS's standard Automation permission — it only asks once per target app. If it gets blocked, go to **System Settings → Privacy & Security → Automation** and enable it.
 
@@ -78,7 +78,7 @@ Click **OK**. This is macOS's standard Automation permission — it only asks on
 2. Zip the app:
    ```
    cd ~/Applications
-   zip -r "Window Resizer.zip" "Window Resizer.app"
+   zip -r "Resizer.zip" "Resizer.app"
    ```
 3. Share the .zip via your internal file sharing
 4. Each person unzips, moves to `~/Applications`, and drags to Dock
@@ -94,10 +94,10 @@ Click **OK**. This is macOS's standard Automation permission — it only asks on
 
 ## How It Works
 
-**Window Resizer.app** is a compiled AppleScript that:
+**Resizer.app** is a compiled AppleScript that:
 
 1. Detects the previously-active app using `lsappinfo` (skips Finder, Dock, and other launchers)
-2. Reads sizes from `~/.config/window-resizer/sizes.conf` (falls back to built-in defaults if missing)
+2. Reads sizes from `~/.config/resizer/sizes.conf` (falls back to built-in defaults if missing)
 3. If the target is a browser, adds viewport options to the list
 4. Presents a `choose from list` dialog
 5. Resizes the target app's front window using `set bounds`
@@ -110,11 +110,11 @@ The `y` offset of `25` in the bounds accounts for the macOS menu bar. Dimensions
 **"App is damaged and can't be opened"**
 → Right-click the app → Open → click "Open" in the dialog. This is Gatekeeper; it only happens once.
 
-**"Window Resizer wants to control [app]" keeps appearing**
-→ Go to System Settings → Privacy & Security → Automation → enable Window Resizer for that app.
+**"Resizer wants to control [app]" keeps appearing**
+→ Go to System Settings → Privacy & Security → Automation → enable Resizer for that app.
 
 **Wrong app detected**
-→ Make sure you click on the target window before launching Window Resizer. If you launched from Finder, the app skips Finder and detects the next most recent app.
+→ Make sure you click on the target window before launching Resizer. If you launched from Finder, the app skips Finder and detects the next most recent app.
 
 **Window doesn't fit on my screen**
 → 1920×1080 requires at least a 1920px-wide display. On a smaller screen, the window will be clipped. Add a smaller preset to your config file.
