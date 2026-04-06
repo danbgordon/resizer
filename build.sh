@@ -91,10 +91,28 @@ rm -f /tmp/resizer /tmp/ax_check /tmp/ax_check.swift
 # Reset flags since rebuild changes codesign (which resets macOS permissions)
 defaults delete com.danbgordon.resizer 2>/dev/null || true
 
+# ----------------------------------------------------------
+# Build .pkg installer
+# ----------------------------------------------------------
+echo "  Building installer..."
+PKG_ROOT="/tmp/resizer-pkg-root"
+PKG_PATH="$SCRIPT_DIR/Resizer-1.0.pkg"
+rm -rf "$PKG_ROOT" "$PKG_PATH"
+mkdir -p "$PKG_ROOT/Applications"
+cp -R "$APP_PATH" "$PKG_ROOT/Applications/"
+pkgbuild \
+    --root "$PKG_ROOT" \
+    --identifier "$BUNDLE_ID" \
+    --version 1.0 \
+    --install-location / \
+    "$PKG_PATH" >/dev/null
+rm -rf "$PKG_ROOT"
+
 echo "  Done!"
 echo ""
 echo "============================================================"
-echo "  App:  $APP_PATH"
+echo "  App:       $APP_PATH"
+echo "  Installer: $PKG_PATH"
 echo ""
 echo "  Drag to your Dock for easy access."
 echo "  Config: ~/.config/resizer/sizes.conf (created on first launch)"
