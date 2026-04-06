@@ -400,33 +400,37 @@ func showChooser(appName: String, sizes: [SizeOption], showViewport: Bool) -> (w
     alert.addButton(withTitle: "Cancel")
 
     let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 280, height: 28), pullsDown: false)
-
-    // Window sizes
     for s in sizes {
         popup.addItem(withTitle: "\(s.width) \u{00d7} \(s.height)")
     }
 
-    // Viewport sizes (browsers only)
+    // Stack popup + optional viewport checkbox vertically
+    let container: NSView
+    let viewportCheckbox: NSButton?
+
     if showViewport {
-        popup.menu?.addItem(NSMenuItem.separator())
-        for s in sizes {
-            popup.addItem(withTitle: "\(s.width) \u{00d7} \(s.height) (viewport)")
-        }
+        let checkbox = NSButton(checkboxWithTitle: "Viewport size", target: nil, action: nil)
+        checkbox.frame = NSRect(x: 2, y: 0, width: 280, height: 18)
+        popup.frame = NSRect(x: 0, y: 24, width: 280, height: 28)
+        let stack = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 52))
+        stack.addSubview(popup)
+        stack.addSubview(checkbox)
+        container = stack
+        viewportCheckbox = checkbox
+    } else {
+        container = popup
+        viewportCheckbox = nil
     }
 
-    alert.accessoryView = popup
+    alert.accessoryView = container
 
     NSApp.activate(ignoringOtherApps: true)
     let response = alert.runModal()
     guard response == .alertFirstButtonReturn else { return nil }
 
+    let isViewport = viewportCheckbox?.state == .on
     let selected = popup.titleOfSelectedItem ?? ""
-    let isViewport = selected.contains("(viewport)")
-
-    // Parse dimensions from "1280 \u{00d7} 1024" or "1280 \u{00d7} 1024 (viewport)"
-    let clean = selected
-        .replacingOccurrences(of: " (viewport)", with: "")
-    let dimParts = clean.split(separator: " \u{00d7} ")
+    let dimParts = selected.split(separator: " \u{00d7} ")
     guard dimParts.count >= 2, let w = Int(dimParts[0]), let h = Int(dimParts[1]) else { return nil }
 
     return (w, h, isViewport)
