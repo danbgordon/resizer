@@ -50,6 +50,10 @@ chmod +x "$APP_PATH/Contents/MacOS/resizer"
 cp /tmp/ax_check "$APP_PATH/Contents/Resources/ax_check"
 chmod +x "$APP_PATH/Contents/Resources/ax_check"
 
+if [ -f "$SCRIPT_DIR/Resizer.icns" ]; then
+    cp "$SCRIPT_DIR/Resizer.icns" "$APP_PATH/Contents/Resources/Resizer.icns"
+fi
+
 cat > "$APP_PATH/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -69,6 +73,8 @@ cat > "$APP_PATH/Contents/Info.plist" << PLIST
     <string>1.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>Resizer</string>
     <key>LSUIElement</key>
     <true/>
     <key>LSMinimumSystemVersion</key>
