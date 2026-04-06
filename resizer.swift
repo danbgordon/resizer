@@ -11,9 +11,17 @@ import ApplicationServices
 struct SizeOption {
     let width: Int
     let height: Int
+    let name: String?
+
+    var displayTitle: String {
+        if let name = name {
+            return "\(width) \u{00d7} \(height) — \(name)"
+        }
+        return "\(width) \u{00d7} \(height)"
+    }
 }
 
-let defaultSizes = [SizeOption(width: 1280, height: 1024), SizeOption(width: 1920, height: 1080)]
+let defaultSizes = [SizeOption(width: 1280, height: 1024, name: nil), SizeOption(width: 1920, height: 1080, name: nil)]
 let configPath = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent(".config/resizer/sizes.conf").path
 
@@ -39,11 +47,12 @@ func loadSizes() -> [SizeOption] {
     for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
-        let parts = trimmed.split(separator: ",")
+        let parts = trimmed.split(separator: ",", maxSplits: 2)
         if parts.count >= 2,
            let w = Int(parts[0].trimmingCharacters(in: .whitespaces)),
            let h = Int(parts[1].trimmingCharacters(in: .whitespaces)) {
-            sizes.append(SizeOption(width: w, height: h))
+            let name = parts.count >= 3 ? parts[2].trimmingCharacters(in: .whitespaces) : nil
+            sizes.append(SizeOption(width: w, height: h, name: name))
         }
     }
     return sizes.isEmpty ? defaultSizes : sizes
@@ -56,14 +65,14 @@ func ensureDefaultConfig() {
         try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
         let defaultContent = """
         # Resizer — custom sizes
-        # Format: width,height (one per line)
+        # Format: width,height or width,height,name (one per line)
         # Lines starting with # are ignored, blank lines are skipped
         #
         # These dimensions set the full window size. When a supported
         # browser (Chrome, Safari) is the target, viewport options are
         # also offered automatically.
         1280,1024
-        1920,1080
+        1920,1080,Full HD
         """
         try? defaultContent.write(toFile: configPath, atomically: true, encoding: .utf8)
     }
@@ -401,7 +410,7 @@ func showChooser(appName: String, sizes: [SizeOption], showViewport: Bool) -> (w
 
     let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 280, height: 28), pullsDown: false)
     for s in sizes {
-        popup.addItem(withTitle: "\(s.width) \u{00d7} \(s.height)")
+        popup.addItem(withTitle: s.displayTitle)
     }
 
     // Stack popup + optional viewport checkbox vertically
@@ -429,11 +438,11 @@ func showChooser(appName: String, sizes: [SizeOption], showViewport: Bool) -> (w
     guard response == .alertFirstButtonReturn else { return nil }
 
     let isViewport = viewportCheckbox?.state == .on
-    let selected = popup.titleOfSelectedItem ?? ""
-    let dimParts = selected.split(separator: " \u{00d7} ")
-    guard dimParts.count >= 2, let w = Int(dimParts[0]), let h = Int(dimParts[1]) else { return nil }
+    let selectedIndex = popup.indexOfSelectedItem
+    guard selectedIndex >= 0 && selectedIndex < sizes.count else { return nil }
+    let s = sizes[selectedIndex]
 
-    return (w, h, isViewport)
+    return (s.width, s.height, isViewport)
 }
 
 func showError(_ message: String) {
