@@ -39,12 +39,12 @@ Sizes are stored in `~/.config/resizer/sizes.conf` (created automatically on fir
 
 ```
 # Resizer — custom sizes
-# Format: width,height (one per line)
+# Format: width,height or width,height,name (one per line)
 # Lines starting with # are ignored, blank lines are skipped
 1280,1024
-1920,1080
-1440,900
-3840,2160
+1920,1080,Full HD
+1440,900,Recording
+3840,2160,4K
 ```
 
 Changes take effect the next time you launch the app.

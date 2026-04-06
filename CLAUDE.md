@@ -20,7 +20,7 @@ Target audience: Fleet (fleetdm.com) team members who need to record their scree
 - Window resize uses **Accessibility API** (`AXUIElement`) — only requires Accessibility permission (one time, for all apps)
 - No per-app Automation permission needed for window resizing (unlike the old AppleScript approach)
 - Auto-detects the previously-active app using `lsappinfo visibleProcessList` (skips Finder, Dock, Spotlight, Launchpad)
-- Sizes loaded from `~/.config/resizer/sizes.conf` (CSV format: `width,height`), falls back to built-in defaults
+- Sizes loaded from `~/.config/resizer/sizes.conf` (CSV format: `width,height` or `width,height,name`), falls back to built-in defaults
 - Config file created on first launch if missing
 - Viewport resize (browsers only): two-pass technique — set window size, measure viewport via JavaScript (`osascript` subprocess), adjust to compensate for browser UI chrome
   - Chromium browsers: `using terms from application "Google Chrome"` + `execute javascript`
