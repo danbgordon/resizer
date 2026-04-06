@@ -1,39 +1,41 @@
-# Resizer — Setup Guide
+# Resizer
 
-## What This Does
+A native macOS app that resizes any application's window to exact pixel dimensions. Works with any app — and when a browser (Chrome, Safari, Edge, Arc, Brave) is the target, it also offers viewport-accurate sizing.
 
-A single macOS app that resizes any application's window to exact pixel dimensions. Works with any app — and when a browser (Chrome, Safari, Edge, Arc, Brave) is the target, it also offers viewport-accurate sizing. No extensions, no dependencies — just native macOS AppleScript.
+No extensions, no dependencies — just a lightweight native Swift app.
 
-Sizes are loaded from a simple config file that you can edit to add your own presets.
+## Install
 
-## Quick Start
+### Option A: Download the installer
+1. Download `Resizer-1.0.pkg` from the [latest release](https://github.com/danbgordon/resizer/releases)
+2. Double-click to install (installs to `/Applications`)
+3. Drag **Resizer** to your **Dock** for easy access
 
-1. Open **Terminal** (Applications → Utilities → Terminal)
-2. Navigate to wherever you saved these files:
-   ```
-   cd ~/Downloads/resizer
-   ```
-3. Make the script executable and run it:
-   ```
-   chmod +x build-apps.sh
-   ./build-apps.sh
-   ```
-4. **Resizer.app** will appear in `~/Applications`
-5. Drag it to your **Dock**
+### Option B: Build from source
+```
+git clone https://github.com/danbgordon/resizer.git
+cd resizer
+chmod +x build.sh
+./build.sh
+```
+
+## First Launch
+
+1. **Right-click → Open** the first time to bypass Gatekeeper
+2. Grant **Accessibility** permission when prompted — this is the only permission needed for window resizing, and it works for all apps
 
 ## How to Use
 
-1. Click on the window you want to resize (making it the active app)
-2. Click **Resizer** in your Dock
-3. The app auto-detects what you were just using and shows: **"Resize: Google Chrome"**
-4. Pick a size from the list
-5. Done — the window resizes and the app exits
+1. Click on the window you want to resize
+2. Launch **Resizer** from the Dock
+3. Pick a size from the dropdown and click **Resize**
+4. Done — the window resizes and the app exits
 
 If the target is a browser, viewport options are also shown (e.g., "1280 × 1024 (viewport)").
 
 ## Custom Sizes
 
-Sizes are stored in `~/.config/resizer/sizes.conf`. The build script creates a default config with two sizes (1280×1024 and 1920×1080). Edit this file to add your own:
+Sizes are stored in `~/.config/resizer/sizes.conf` (created automatically on first launch). Edit this file to add your own presets:
 
 ```
 # Resizer — custom sizes
@@ -45,79 +47,56 @@ Sizes are stored in `~/.config/resizer/sizes.conf`. The build script creates a d
 3840,2160
 ```
 
-Changes take effect the next time you launch the app — no rebuild needed.
+Changes take effect the next time you launch the app.
 
 ## Window vs Viewport Mode
 
-- **Window mode** sets the full window frame (including title bar, tabs, address bar) to the target dimensions. Available for any app.
-- **Viewport mode** sets the web content area to the exact target dimensions, automatically compensating for the browser's UI chrome. Only available when a supported browser is the target.
+- **Window mode** — sets the full window frame (including title bar, tabs, address bar) to the target dimensions. Available for any app.
+- **Viewport mode** — sets the web content area to the exact target dimensions, automatically compensating for the browser's UI chrome. Only available for supported browsers.
 
 Supported browsers for viewport mode: Google Chrome, Chrome Canary, Chromium, Brave, Microsoft Edge, Arc, Safari.
 
-> **Chrome viewport setup:** Go to **View → Developer → Allow JavaScript from Apple Events** (one-time setting). Viewport mode also requires a regular web page in the active tab — not a `chrome://` internal page. If JavaScript access isn't available, the app falls back to window mode with a helpful message.
+> **Chrome viewport setup:** Enable **View → Developer → Allow JavaScript from Apple Events** (one-time setting). Viewport mode also requires a regular web page in the active tab — not a `chrome://` internal page.
 
-## First-Time Permission
+## Permissions
 
-The first time you resize a particular app, macOS will ask:
+| Action | Permission | When prompted |
+|--------|-----------|---------------|
+| Resize any window | Accessibility | Once, on first launch |
+| Browser viewport mode | Automation (per browser) | Once per browser, only if you use viewport mode |
 
-> "Resizer" wants to control "[App Name]." Allow?
+Resizer explains each permission before macOS prompts you.
 
-Click **OK**. This is macOS's standard Automation permission — it only asks once per target app. If it gets blocked, go to **System Settings → Privacy & Security → Automation** and enable it.
+## Deployment (Fleet, Jamf, etc.)
 
-## Company-Wide Deployment
-
-### Option A: Share the Build Script (Simplest)
-
-1. Distribute `build-apps.sh` (via Slack, email, shared drive, etc.)
-2. Each person runs the terminal commands above
-3. Done — the app and default config are created locally
-
-### Option B: Pre-Build and Distribute
-
-1. Run `build-apps.sh` on your own Mac
-2. Zip the app:
-   ```
-   cd ~/Applications
-   zip -r "Resizer.zip" "Resizer.app"
-   ```
-3. Share the .zip via your internal file sharing
-4. Each person unzips, moves to `~/Applications`, and drags to Dock
-
-> **Note:** Pre-built .app files may trigger Gatekeeper warnings. Right-click → Open the first time to bypass.
-
-### Option C: MDM Deployment (Fleet, Jamf, etc.)
-
-1. Pre-build the app
-2. Package into a `.pkg` installer targeting `/Applications/`
-3. Deploy via MDM
-4. Pre-approve the Automation permission via a PPPC profile for each target app (e.g., `com.google.Chrome`)
+1. Download or build `Resizer-1.0.pkg`
+2. Deploy via MDM to `/Applications`
+3. Optionally pre-approve Accessibility via a PPPC profile for `com.danbgordon.resizer`
 
 ## How It Works
 
-**Resizer.app** is a compiled AppleScript that:
+**Resizer** is a native Swift app that:
 
 1. Detects the previously-active app using `lsappinfo` (skips Finder, Dock, and other launchers)
 2. Reads sizes from `~/.config/resizer/sizes.conf` (falls back to built-in defaults if missing)
-3. If the target is a browser, adds viewport options to the list
-4. Presents a `choose from list` dialog
-5. Resizes the target app's front window using `set bounds`
-6. For viewport mode: measures the actual viewport via JavaScript, calculates the UI chrome overhead, and adjusts the window to compensate
-
-The `y` offset of `25` in the bounds accounts for the macOS menu bar. Dimensions are the full window frame — the viewport (web content area) will be slightly smaller in window mode.
+3. Shows a size picker (with viewport options for browsers)
+4. Resizes the window using the macOS Accessibility API (`AXUIElement`)
+5. For viewport mode: measures the actual viewport via JavaScript, calculates the browser chrome overhead, and adjusts the window to compensate
+6. Keeps the window on its current screen (multi-monitor aware)
 
 ## Troubleshooting
 
 **"App is damaged and can't be opened"**
 → Right-click the app → Open → click "Open" in the dialog. This is Gatekeeper; it only happens once.
 
-**"Resizer wants to control [app]" keeps appearing**
-→ Go to System Settings → Privacy & Security → Automation → enable Resizer for that app.
-
 **Wrong app detected**
 → Make sure you click on the target window before launching Resizer. If you launched from Finder, the app skips Finder and detects the next most recent app.
 
 **Window doesn't fit on my screen**
-→ 1920×1080 requires at least a 1920px-wide display. On a smaller screen, the window will be clipped. Add a smaller preset to your config file.
+→ 1920×1080 requires at least a 1920px-wide display. Add a smaller preset to your config file.
 
 **Viewport mode isn't offered**
-→ Viewport mode only appears when the target app is a supported browser (Chrome, Safari, Edge, Arc, Brave, Chromium).
+→ Viewport mode only appears when the target app is a supported browser.
+
+**Viewport falls back to window size**
+→ Make sure the active tab has a regular web page (not `chrome://settings` or similar). For Chrome, enable View → Developer → Allow JavaScript from Apple Events.
